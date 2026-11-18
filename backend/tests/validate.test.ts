@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import express from 'express';
 import request from 'supertest';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import { validate } from '../src/middleware/validate.js';
 
 /**

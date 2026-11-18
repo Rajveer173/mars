@@ -16,6 +16,7 @@ import { apiRouter } from './routes/index.js';
 import { metricsMiddleware } from './monitoring/metrics.js';
 import { initCache } from './services/cache.service.js';
 import registerJobs from './jobs/index.js';
+import { embedPending, syncLessons } from './ai/knowledge.service.js';
 
 export function createApp(): express.Express {
   const app = express();
@@ -58,4 +59,9 @@ export function startBackgroundJobs(): void {
   } catch (err) {
     console.error('Failed to start background jobs:', err);
   }
+  // Mirror lessons into the knowledge base (unchanged ones are skipped by hash), then give
+  // chunks indexed before an embedding model was configured their vectors.
+  void syncLessons()
+    .then(() => embedPending())
+    .catch((err: Error) => console.error('Knowledge base sync failed:', err.message));
 }

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import { requireRole } from '../middleware/authorize.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import * as testSectionService from '../services/testSection.service.js';
 
 const staffOnly = requireRole('ADMIN', 'TEACHER');

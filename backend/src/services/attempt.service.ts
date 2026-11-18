@@ -64,25 +64,49 @@ const loadAttemptOwned = async (attemptId: string) => {
   return attempt;
 };
 
-export const sanitizedQuestion = (question: {
-  id: string;
-  text: string;
-  type: QuestionType;
-  difficulty: string;
-  marks: Prisma.Decimal;
-  negativeMarks: Prisma.Decimal;
-  options: { id: string; text: string; orderIndex: number }[];
-}) => ({
-  id: question.id,
-  text: question.text,
-  type: question.type,
-  difficulty: question.difficulty,
-  marks: Number(question.marks),
-  negativeMarks: Number(question.negativeMarks),
-  options: question.options
-    .map((o) => ({ id: o.id, text: o.text }))
-    .sort(() => Math.random() - 0.5),
-});
+const fnv = (value: string): number => {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+};
+
+/**
+ * A shuffle that depends only on the seed. The order must be the same every time
+ * an attempt is loaded: a reload that moved the options would put a different
+ * answer under the bubble the candidate was about to fill.
+ */
+const seededShuffle = <T extends { id: string }>(items: T[], seed: string): T[] =>
+  [...items].sort((a, b) => fnv(seed + a.id) - fnv(seed + b.id));
+
+export const sanitizedQuestion = (
+  question: {
+    id: string;
+    text: string;
+    type: QuestionType;
+    difficulty: string;
+    marks: Prisma.Decimal;
+    negativeMarks: Prisma.Decimal;
+    options: { id: string; text: string; orderIndex: number }[];
+  },
+  /** When set, options are shuffled with this seed; otherwise they keep the author's order. */
+  shuffleSeed?: string,
+) => {
+  const ordered = [...question.options].sort((a, b) => a.orderIndex - b.orderIndex);
+  // True/False keeps its natural order: shuffling two fixed labels helps no one.
+  const options = shuffleSeed && question.type !== QuestionType.TRUE_FALSE ? seededShuffle(ordered, shuffleSeed) : ordered;
+  return {
+    id: question.id,
+    text: question.text,
+    type: question.type,
+    difficulty: question.difficulty,
+    marks: Number(question.marks),
+    negativeMarks: Number(question.negativeMarks),
+    options: options.map((o) => ({ id: o.id, text: o.text })),
+  };
+};
 
 const buildAttemptPayload = async (attempt: { id: string; studentId: string; testId: string }) => {
   const [test, savedAnswers, attemptRow] = await Promise.all([
@@ -114,9 +138,7 @@ const buildAttemptPayload = async (attempt: { id: string; studentId: string; tes
     .slice()
     .sort((a, b) => a.orderIndex - b.orderIndex);
 
-  const items = test.shuffleQuestions
-    ? questions.map((tq) => tq).sort(() => Math.random() - 0.5)
-    : questions;
+  const items = test.shuffleQuestions ? seededShuffle(questions, attempt.id) : questions;
 
   return {
     attempt: {
@@ -140,7 +162,7 @@ const buildAttemptPayload = async (attempt: { id: string; studentId: string; tes
     },
     questions: items.map((tq) => ({
       orderIndex: tq.orderIndex,
-      question: sanitizedQuestion(tq.question),
+      question: sanitizedQuestion(tq.question, test.randomOptionOrder ? attempt.id : undefined),
     })),
     answers: savedAnswers.map((a) => ({
       questionId: a.questionId,
@@ -150,7 +172,7 @@ const buildAttemptPayload = async (attempt: { id: string; studentId: string; tes
   };
 };
 
-export const startAttempt = async (studentId: string, testId: string) => {
+export const startAttempt = async (studentId: string, testId: string, password?: string) => {
   const test = await prisma.test.findUnique({ where: { id: testId } });
   if (!test) throw new AppError(404, 'Test not found');
   if (test.status !== TestStatus.PUBLISHED) {
@@ -169,6 +191,10 @@ export const startAttempt = async (studentId: string, testId: string) => {
   });
   if (existing) return buildAttemptPayload(existing);
 
+  if (test.password && test.password !== password) {
+    throw new AppError(403, 'Enter the password provided by your instructor', undefined, 'TEST_PASSWORD_REQUIRED');
+  }
+
   const finishedCount = await prisma.attempt.count({
     where: { studentId, testId, status: { in: [AttemptStatus.SUBMITTED, AttemptStatus.EVALUATED] } },
   });
@@ -176,8 +202,12 @@ export const startAttempt = async (studentId: string, testId: string) => {
     throw new AppError(403, 'You have exhausted the allowed attempts for this test');
   }
 
-  const attempt = await prisma.attempt.create({
-    data: { studentId, testId, status: AttemptStatus.IN_PROGRESS, suspiciousEvents: [] },
+  const attempt = await prisma.$transaction(async tx => {
+    const created = await tx.attempt.create({
+      data: { studentId, testId, status: AttemptStatus.IN_PROGRESS, suspiciousEvents: [] },
+    });
+    await tx.proctoringSession.create({ data: { attemptId: created.id, testId, studentId } });
+    return created;
   });
 
   return buildAttemptPayload(attempt);
@@ -277,7 +307,7 @@ export const logSuspiciousEvent = async (
       },
     });
     const allEvents = await prisma.proctoringEvent.findMany({ where: { sessionId: session.id } });
-    suspicionScore = Math.min(100, allEvents.reduce((sum, e) => sum + (SEVERITY_WEIGHT[input.type] ?? 2), 0));
+    suspicionScore = Math.min(100, allEvents.reduce((sum, e) => sum + (SEVERITY_WEIGHT[e.type] ?? 2), 0));
     await prisma.proctoringSession.update({
       where: { id: session.id },
       data: { suspicionScore },
@@ -309,6 +339,10 @@ export const finalize = async (attemptId: string): Promise<{ attemptId: string; 
   });
 
   const result = await evaluateAttempt(attemptId);
+  await prisma.proctoringSession.updateMany({
+    where: { attemptId, status: 'ACTIVE' },
+    data: { status: 'COMPLETED', endedAt: new Date() },
+  });
   await prisma.attempt.update({
     where: { id: attemptId },
     data: { status: AttemptStatus.EVALUATED },
@@ -376,6 +410,7 @@ export const listAssignedTestsForStudent = async (studentId: string) => {
         passingMarks: Number(test.passingMarks),
         negativeMarks: Number(test.negativeMarks),
         maxAttempts: test.maxAttempts,
+        requiresPassword: !!test.password,
         shuffleQuestions: test.shuffleQuestions,
         questionCount: test._count.testQuestions,
         startAt: test.startAt,

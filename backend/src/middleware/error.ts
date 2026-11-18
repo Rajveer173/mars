@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
-import { ZodError } from 'zod';
+import { ZodError } from 'zod/v3';
 import multer from 'multer';
 import { isProduction } from '../config/env.js';
 import { AppError } from '../utils/errors.js';

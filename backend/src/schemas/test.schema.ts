@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import { Difficulty, TestStatus, ExamMode } from '@prisma/client';
 
 export const testBaseSchema = z.object({
@@ -24,9 +24,15 @@ export const testBaseSchema = z.object({
 export const createTestSchema = testBaseSchema;
 export const updateTestSchema = testBaseSchema.partial();
 
-export const assignTestSchema = z.object({
-  studentIds: z.array(z.string().min(1)).min(1),
-});
+// A test goes to whole classes, to named students, or both.
+export const assignTestSchema = z
+  .object({
+    studentIds: z.array(z.string().min(1)).max(500).default([]),
+    classIds: z.array(z.string().min(1)).max(50).default([]),
+  })
+  .refine((input) => input.studentIds.length + input.classIds.length > 0, {
+    message: 'Choose at least one class or student',
+  });
 
 export const generateTestSchema = z.object({
   title: z.string().min(1).max(200),

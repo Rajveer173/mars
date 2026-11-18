@@ -1,5 +1,5 @@
 import { Prisma } from '@prisma/client';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import { prisma } from '../config/database.js';
 import { AppError } from '../utils/errors.js';
 

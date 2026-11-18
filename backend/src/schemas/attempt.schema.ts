@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 export const saveAnswerSchema = z.object({
   questionId: z.string().min(1),

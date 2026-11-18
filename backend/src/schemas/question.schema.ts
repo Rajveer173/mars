@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import { Difficulty, QuestionType, BloomLevel } from '@prisma/client';
 
 export const optionSchema = z.object({

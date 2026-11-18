@@ -16,7 +16,7 @@ jobs:
     env:
       # Prisma resolves the datasource URL at generate time; the value is never
       # connected to during typecheck, build or the mocked test suite.
-      DATABASE_URL: postgresql://examforge:examforge@localhost:5432/examforge
+      DATABASE_URL: mysql://examforge:examforge@localhost:3306/examforge
       JWT_ACCESS_SECRET: ci-access-secret-value-0123456789
       JWT_REFRESH_SECRET: ci-refresh-secret-value-0123456789
       NODE_ENV: test
@@ -51,6 +51,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm run build
+      - run: npm test
       - name: Upload build output
         uses: actions/upload-artifact@v4
         with:

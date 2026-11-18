@@ -52,6 +52,8 @@ function marksForQuestion(
     const selected: string[] = Array.isArray(json && typeof json === 'object' && 'optionIds' in json ? (json as { optionIds?: unknown }).optionIds : null)
       ? ((json as { optionIds: string[] }).optionIds ?? [])
       : [];
+    // Ticking and then unticking every option is a blank answer, not a wrong one.
+    if (selected.length === 0) return { marks: 0, isCorrect: null };
     const correctSet = new Set(question.options.filter((o) => o.isCorrect).map((o) => o.id));
     const selectedSet = new Set(selected);
     const exactMatch =

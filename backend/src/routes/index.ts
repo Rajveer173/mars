@@ -64,10 +64,18 @@ apiRouter.use('/class-batches', classBatchRouter);
 apiRouter.use(lmsRouter);
 apiRouter.use(testSectionRouter);
 apiRouter.use('/files', uploadLimiter, fileUploadRouter);
-apiRouter.use('/coding-problems', codeExecutionLimiter, codingProblemRouter);
+apiRouter.use('/coding-problems', requireAuth, (req, res, next) => {
+  if (req.method === 'POST' && req.path.endsWith('/execute')) return codeExecutionLimiter(req, res, next);
+  next();
+}, codingProblemRouter);
 apiRouter.use('/proctoring', proctoringRouter);
 apiRouter.use('/organizations', organizationRouter);
-apiRouter.use('/ai', aiLimiter, aiRouter);
+// Status, history and traces do not consume model quota. Authenticate before
+// limiting so different people behind a campus IP have independent quotas.
+apiRouter.use('/ai', requireAuth, (req, res, next) => {
+  if (req.method === 'POST') return aiLimiter(req, res, next);
+  next();
+}, aiRouter);
 apiRouter.use('/search', searchLimiter, searchRouter);
 apiRouter.use('/analytics', analyticsRouter);
 apiRouter.use('/certificates', certificateRouter);

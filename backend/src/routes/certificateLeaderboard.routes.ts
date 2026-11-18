@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import { requireAuth } from '../middleware/auth.js';
 import { requireRole } from '../middleware/authorize.js';
 import { asyncHandler } from '../utils/asyncHandler.js';

@@ -1,5 +1,7 @@
 import { prisma } from '../config/database.js';
 import { AppError } from '../utils/errors.js';
+import { syncLessons } from '../ai/knowledge.service.js';
+import { logger } from '../utils/logger.js';
 import type {
   CreateModuleInput,
   UpdateModuleInput,
@@ -7,6 +9,12 @@ import type {
   UpdateLessonInput,
   CreateResourceInput,
 } from '../schemas/lms.schema.js';
+
+// Lesson text is what the agents retrieve from, so a saved lesson is re-indexed.
+// It runs after the response: a slow or failed index must not fail the save.
+const reindexLessons = () => {
+  void syncLessons().catch((err: Error) => logger.warn(`[ai] lesson re-index failed: ${err.message}`));
+};
 
 export async function createModule(courseId: string, data: CreateModuleInput) {
   const course = await prisma.course.findUnique({ where: { id: courseId } });
@@ -22,10 +30,18 @@ export async function listModules(courseId: string) {
   const course = await prisma.course.findUnique({ where: { id: courseId } });
   if (!course) throw new AppError(404, 'Course not found');
 
+  // The outline carries each lesson's title, not its text: one request draws the
+  // whole course page, and lesson bodies are fetched when a lesson is opened.
   return prisma.module.findMany({
     where: { courseId },
     orderBy: { orderIndex: 'asc' },
-    include: { _count: { select: { lessons: true } } },
+    include: {
+      _count: { select: { lessons: true } },
+      lessons: {
+        orderBy: { orderIndex: 'asc' },
+        select: { id: true, title: true, type: true, durationMin: true, orderIndex: true },
+      },
+    },
   });
 }
 
@@ -64,6 +80,7 @@ export async function createLesson(moduleId: string, data: CreateLessonInput) {
   const lesson = await prisma.lesson.create({ data: { ...data, orderIndex, moduleId } });
 
   await recalculateCourseProgress(mod.courseId);
+  reindexLessons();
 
   return lesson;
 }
@@ -77,7 +94,9 @@ export async function getLesson(id: string) {
 export async function updateLesson(id: string, data: UpdateLessonInput) {
   const lesson = await prisma.lesson.findUnique({ where: { id } });
   if (!lesson) throw new AppError(404, 'Lesson not found');
-  return prisma.lesson.update({ where: { id }, data });
+  const updated = await prisma.lesson.update({ where: { id }, data });
+  reindexLessons();
+  return updated;
 }
 
 export async function deleteLesson(id: string) {

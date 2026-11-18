@@ -100,7 +100,12 @@ export const getTest = async (id: string, viewer: { id: string; role: string }) 
         include: { question: { include: { options: true, tags: true, analytics: true } } },
         orderBy: { orderIndex: 'asc' },
       },
-      assignments: { include: { student: { select: { id: true, fullName: true, email: true } } } },
+      assignments: {
+        include: {
+          student: { select: { id: true, fullName: true, email: true } },
+          class: { select: { id: true, name: true, _count: { select: { students: true } } } },
+        },
+      },
     },
   });
   if (!test) throw new AppError(404, 'Test not found');
@@ -211,24 +216,37 @@ export const assignTest = async (id: string, viewer: { id: string; role: string 
     throw new AppError(400, 'One or more student ids are invalid');
   }
 
-  const existing = await prisma.testAssignment.findMany({
-    where: { testId: id, studentId: { in: input.studentIds } },
-    select: { studentId: true },
+  const classes = await prisma.classBatch.findMany({
+    where: { id: { in: input.classIds } },
+    select: { id: true, students: { select: { studentId: true } } },
   });
-  const existingIds = new Set(existing.map((a) => a.studentId));
-  const toCreate = input.studentIds.filter((sid) => !existingIds.has(sid));
+  if (classes.length !== new Set(input.classIds).size) {
+    throw new AppError(400, 'One or more class ids are invalid');
+  }
 
-  if (toCreate.length > 0) {
+  const existing = await prisma.testAssignment.findMany({
+    where: { testId: id, OR: [{ studentId: { in: input.studentIds } }, { classId: { in: input.classIds } }] },
+    select: { studentId: true, classId: true },
+  });
+  const assignedStudents = new Set(existing.map((a) => a.studentId));
+  const assignedClasses = new Set(existing.map((a) => a.classId));
+  const newStudents = input.studentIds.filter((sid) => !assignedStudents.has(sid));
+  const newClasses = classes.filter((c) => !assignedClasses.has(c.id));
+
+  if (newStudents.length + newClasses.length > 0) {
     await prisma.testAssignment.createMany({
-      data: toCreate.map((studentId) => ({ testId: id, studentId })),
-      skipDuplicates: true,
+      data: [
+        ...newStudents.map((studentId) => ({ testId: id, studentId })),
+        ...newClasses.map((c) => ({ testId: id, classId: c.id })),
+      ],
     });
 
-    // Send notifications to newly assigned students
+    // Everyone newly reached is told once, however they were reached.
+    const notify = new Set([...newStudents, ...newClasses.flatMap((c) => c.students.map((s) => s.studentId))]);
     const test = await prisma.test.findUnique({ where: { id }, select: { title: true } });
-    if (test) {
+    if (test && notify.size > 0) {
       await createManyNotifications(
-        toCreate.map((studentId) => ({
+        [...notify].map((studentId) => ({
           userId: studentId,
           type: 'TEST_ASSIGNED',
           title: `New test assigned: ${test.title}`,
@@ -238,7 +256,7 @@ export const assignTest = async (id: string, viewer: { id: string; role: string 
     }
   }
 
-  return { assigned: toCreate.length };
+  return { assigned: newStudents.length, classes: newClasses.length };
 };
 
 export const listAssignedStudents = async (id: string, viewer: { id: string; role: string }) => {
@@ -247,7 +265,8 @@ export const listAssignedStudents = async (id: string, viewer: { id: string; rol
     where: { testId: id },
     include: { student: { select: { id: true, fullName: true, email: true, username: true } } },
   });
-  return assignments.map((a) => a.student);
+  // A class assignment has no single student; only direct assignments are listed here.
+  return assignments.flatMap((a) => (a.student ? [a.student] : []));
 };
 
 export const listStudentsForAssignment = (search?: string) => searchStudents(search, 100);

@@ -1,12 +1,6 @@
-import { execFile as execFileOriginal, spawn } from 'child_process';
-import { promisify } from 'util';
 import { prisma } from '../config/database.js';
 import { AppError } from '../utils/errors.js';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
-
-const execFile = promisify(execFileOriginal);
+import { runSandbox } from './codeSandbox.js';
 
 interface TestResult {
   passed: boolean;
@@ -25,41 +19,6 @@ interface SubmissionResult {
   output?: string;
   error?: string;
 }
-
-const LANG_CONFIG: Record<string, { ext: string; command: string; args: (file: string) => string[] }> = {
-  python: {
-    ext: 'py',
-    command: 'python',
-    args: (file) => [file],
-  },
-  javascript: {
-    ext: 'js',
-    command: 'node',
-    args: (file) => [file],
-  },
-  java: {
-    ext: 'java',
-    command: 'java',
-    args: (file) => ['-cp', path.dirname(file), path.basename(file, '.java')],
-  },
-};
-
-const runProcess = (command: string, args: string[], input: string, timeoutMs: number) =>
-  new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
-    const child = spawn(command, args, { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
-    let stdout = '';
-    let stderr = '';
-    const timeout = setTimeout(() => child.kill(), timeoutMs);
-    child.stdout.on('data', (chunk) => { stdout += chunk.toString(); });
-    child.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
-    child.on('error', reject);
-    child.on('close', (code) => {
-      clearTimeout(timeout);
-      if (code === 0) resolve({ stdout, stderr });
-      else reject(Object.assign(new Error(stderr || `Process exited with code ${code}`), { stderr }));
-    });
-    child.stdin.end(input);
-  });
 
 export async function createCodingProblem(input: {
   title: string;
@@ -193,29 +152,21 @@ export async function executeCode(problemId: string, userId: string, language: s
   });
   if (!problem) throw new AppError(404, 'Coding problem not found');
 
-  const allowed = JSON.parse(problem.allowedLanguages as string);
+  const allowed = typeof problem.allowedLanguages === 'string' ? JSON.parse(problem.allowedLanguages) : problem.allowedLanguages;
   if (!allowed.includes(language)) throw new AppError(400, `Language '${language}' not allowed for this problem`);
 
-  const config = LANG_CONFIG[language];
-  if (!config) throw new AppError(400, `Unsupported language: ${language}`);
-
-  // Write code to temp file and execute with test cases
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'examforge-'));
-  const filePath = path.join(dir, `solution.${config.ext}`);
-  fs.writeFileSync(filePath, code);
+  if (!['python', 'javascript', 'java'].includes(language)) throw new AppError(400, 'Unsupported language');
+  if (!problem.testCases.length) throw new AppError(400, 'This problem has no test cases yet');
 
   let results: TestResult[] = [];
   let error: string | undefined;
   let executionTime = 0;
 
   try {
-    if (language === 'java') {
-      await execFile('javac', ['-d', dir, filePath], { timeout: problem.timeLimitMs || 2000 });
-    }
     for (const tc of problem.testCases) {
       const startTime = Date.now();
       try {
-        const { stdout } = await runProcess(config.command, config.args(filePath), tc.input ?? '', problem.timeLimitMs || 2000);
+        const { stdout } = await runSandbox(language, code, tc.input ?? '', problem.timeLimitMs || 2000, problem.memoryLimitMB || 256);
         const runtime = Date.now() - startTime;
         executionTime += runtime;
         const actual = stdout.trim();
@@ -227,6 +178,7 @@ export async function executeCode(problemId: string, userId: string, language: s
           runtimeMs: runtime,
         });
       } catch (err: any) {
+        if (err instanceof AppError && err.statusCode === 503) throw err;
         const runtime = Date.now() - startTime;
         executionTime += runtime;
         results.push({
@@ -238,9 +190,8 @@ export async function executeCode(problemId: string, userId: string, language: s
       }
     }
   } catch (err: any) {
+    if (err instanceof AppError && err.statusCode === 503) throw err;
     error = err?.message ?? 'Execution failed';
-  } finally {
-    fs.rmSync(dir, { recursive: true, force: true });
   }
 
   const passedCount = results.filter((r) => r.passed).length;
@@ -248,7 +199,7 @@ export async function executeCode(problemId: string, userId: string, language: s
 
   const result: SubmissionResult = {
     status,
-    results,
+    results: results.map((row, index) => problem.testCases[index]?.isPublic ? row : { ...row, expected: '', actual: row.passed ? '' : 'Hidden test failed' }),
     passedCount,
     totalCount: results.length,
     executionTime,
@@ -268,6 +219,7 @@ export async function executeCode(problemId: string, userId: string, language: s
     },
   });
 
+  // Hidden test inputs and expected outputs never leave the grading service.
   return result;
 }
 

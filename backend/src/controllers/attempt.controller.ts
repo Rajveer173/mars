@@ -3,9 +3,11 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { gradeAnswerSchema, saveAnswerSchema, suspiciousEventSchema } from '../schemas/attempt.schema.js';
 import * as attemptService from '../services/attempt.service.js';
 import * as resultService from '../services/result.service.js';
+import { z } from 'zod/v3';
 
 export const startAttempt = asyncHandler(async (req: Request, res: Response) => {
-  const data = await attemptService.startAttempt(req.user!.id, req.params.testId);
+  const input = z.object({ password: z.string().max(200).optional() }).parse(req.body ?? {});
+  const data = await attemptService.startAttempt(req.user!.id, req.params.testId, input.password);
   res.status(201).json({ success: true, data });
 });
 

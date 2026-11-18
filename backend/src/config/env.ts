@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 dotenv.config();
 
@@ -35,8 +35,8 @@ const envSchema = z.object({
     .string()
     .default('false')
     .transform((v) => v === 'true'),
-  // LLM behind any OpenAI-compatible API, OpenRouter by default (needs LLM_API_KEY).
-  // When it is unreachable or rate limited the AI features fall back to the built-in engine.
+  // Chat model behind any OpenAI-compatible API, OpenRouter by default. The agents
+  // need LLM_API_KEY; without it they report "not connected" and never invent an answer.
   LLM_ENABLED: z
     .string()
     .default('true')
@@ -45,6 +45,17 @@ const envSchema = z.object({
   LLM_MODEL: z.string().min(1).default('nvidia/nemotron-3-super-120b-a12b:free'),
   LLM_API_KEY: z.string().optional().default(''),
   LLM_TIMEOUT_MS: z.coerce.number().int().min(1000).default(80_000),
+  // Embeddings are optional: with EMBED_MODEL unset, retrieval is keyword-only (BM25).
+  // Base URL and key fall back to the LLM_* values, so one provider needs one key.
+  EMBED_MODEL: z.string().optional().default(''),
+  EMBED_BASE_URL: z.string().optional().default(''),
+  EMBED_API_KEY: z.string().optional().default(''),
+  // The verifier agent re-reads every answer against its sources. It costs one
+  // extra model call per answer; turn it off on a tight request quota.
+  AI_VERIFY: z
+    .string()
+    .default('true')
+    .transform((v) => v !== 'false'),
   S3_ENDPOINT: z.string().default('http://localhost:9000'),
   S3_BUCKET: z.string().default('examforge'),
   S3_ACCESS_KEY: z.string().default(''),

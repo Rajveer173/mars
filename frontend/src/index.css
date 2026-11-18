@@ -3,518 +3,261 @@
 @tailwind utilities;
 
 /*
- * ============================================================================
- * ExamForge — "Glass" design language
- * ============================================================================
- *
- * Modelled on Apple's platform materials. One full-bleed workspace over a soft,
- * fixed wallpaper; everything above it is a pane of frosted glass whose blur and
- * translucency let that wallpaper tint through. Structure comes from material
- * thickness, not from borders:
- *
- *   L0  wallpaper ......... bg-canvas + .mesh            no border, no shadow
- *   L1  content cards ..... .card (regular material)     lit hairline, soft shadow
- *   L2  hover / popover ... bg-surface-raised            hairline, shadow-raised
- *   L3  floating chrome ... .glass (thick material)      lit hairline, shadow-dock
- *   L4  modals / palette .. bg-surface-raised            hairline, shadow-overlay
- *
- * Colour is Apple's system palette: systemBlue for the accent, graphite greys
- * (#1C1C1E / #2C2C2E) in dark mode, systemGroupedBackground (#F2F2F7) in light,
- * and the system green / orange / red / teal for status. Shadows are neutral.
- * Controls are filled (tertiary system fill), not outlined.
- *
- * Values are bare "R G B" triplets so Tailwind opacity modifiers keep working
- * (see tailwind.config.js). Contrast: ink >= 15:1, ink-muted >= 7:1,
- * ink-subtle >= 4.6:1 on surface, in both themes.
+ * Inks. Each one means the same thing on every screen:
+ *   ink    what is written: content
+ *   pen    ballpoint blue: what you chose, typed, or can press
+ *   mark   highlighter: evidence, and where to look right now
+ *   red    the examiner's pen: wrong, overdue, deducted
+ *   tick   correct, passed
+ * Borders and secondary text are diluted ink, not neutral grey, so the whole
+ * surface reads as one ink on one sheet.
  */
+:root {
+  --paper: 255 255 255;
+  --desk: 245 246 250;
+  --ink: 16 26 58;
+  --ink-2: 74 84 115;
+  --ink-3: 107 116 145;
+  --rule: 214 219 232;
+  --rule-2: 233 236 244;
+  --pen: 33 64 224;
+  --pen-deep: 23 46 173;
+  --pen-wash: 236 240 255;
+  --mark: 255 230 0;
+  --mark-wash: 255 248 184;
+  --red: 212 33 58;
+  --red-wash: 253 237 239;
+  --tick: 23 128 77;
+  --tick-wash: 231 245 237;
+}
+
 @layer base {
-  :root {
-    --canvas: 242 242 247;
-    --surface: 255 255 255;
-    --surface-raised: 255 255 255;
-    --surface-sunken: 236 236 241;
-
-    --line: 222 222 228;
-    --line-strong: 199 199 204;
-
-    --ink: 29 29 31;
-    --ink-muted: 72 72 78;
-    --ink-subtle: 110 110 115;
-
-    --accent: 0 113 227;
-    --accent-hover: 0 98 204;
-    --accent-soft: 230 240 253;
-    --accent-ink: 0 92 190;
-    --accent-glow: 0 113 227;
-    /* Foreground for filled accent surfaces. */
-    --on-accent: 255 255 255;
-
-    --positive: 36 138 61;
-    --positive-soft: 229 245 233;
-    --positive-ink: 26 112 48;
-
-    --caution: 201 92 0;
-    --caution-soft: 255 241 224;
-    --caution-ink: 150 66 0;
-
-    --critical: 215 0 21;
-    --critical-soft: 255 233 234;
-    --critical-ink: 176 0 18;
-    --on-critical: 255 255 255;
-
-    --info: 0 113 164;
-    --info-soft: 226 242 250;
-    --info-ink: 0 92 136;
-
-    --shadow: 0 0 0;
-
-    /* Tertiary system fill: the resting colour of buttons, fields and hovers. */
-    --fill: 118 118 128;
-    --fill-alpha: 0.1;
-
-    /* Regular material (cards). */
-    --material: 255 255 255;
-    --material-alpha: 0.7;
-    --material-line: 255 255 255;
-    --material-line-alpha: 0.8;
-    --material-edge: 0 0 0;
-    --material-edge-alpha: 0.06;
-
-    /* Thick material (floating chrome). */
-    --glass: 255 255 255;
-    --glass-line: 255 255 255;
-    --glass-alpha: 0.62;
-    --glass-line-alpha: 0.75;
-
-    /* Wallpaper blooms behind the glass. */
-    --mesh-a: 0 122 255;
-    --mesh-b: 255 149 0;
-    --mesh-c: 88 86 214;
-    --mesh-alpha: 0.12;
-
-    /* Always-dark slab for the auth and landing panels. Deliberately NOT
-       redefined under .dark: the slab must stay dark in both themes. */
-    --panel: 0 0 0;
-    --panel-raised: 28 28 30;
-    --panel-ink: 245 245 247;
-    --panel-accent: 100 170 255;
-
-    /* Density metrics. data-density on <html> shifts control heights and table
-       padding without every component branching on the setting. */
-    --control-sm: 1.875rem;
-    --control-md: 2.375rem;
-    --control-lg: 2.875rem;
-    --cell-y: 0.75rem;
-    --cell-x: 1.125rem;
-
-    color-scheme: light;
-  }
-
-  :root[data-density='compact'] {
-    --control-sm: 1.75rem;
-    --control-md: 2.0625rem;
-    --control-lg: 2.5rem;
-    --cell-y: 0.4375rem;
-    --cell-x: 0.875rem;
-  }
-
-  .dark {
-    --canvas: 0 0 0;
-    --surface: 28 28 30;
-    --surface-raised: 44 44 46;
-    --surface-sunken: 18 18 20;
-
-    --line: 56 56 58;
-    --line-strong: 72 72 74;
-
-    --ink: 245 245 247;
-    --ink-muted: 190 190 196;
-    --ink-subtle: 152 152 159;
-
-    --accent: 10 132 255;
-    --accent-hover: 64 156 255;
-    --accent-soft: 12 40 72;
-    --accent-ink: 100 170 255;
-    --accent-glow: 10 132 255;
-    --on-accent: 255 255 255;
-
-    --positive: 48 209 88;
-    --positive-soft: 12 48 22;
-    --positive-ink: 110 226 140;
-
-    --caution: 255 159 10;
-    --caution-soft: 56 38 8;
-    --caution-ink: 255 196 110;
-
-    --critical: 255 69 58;
-    --critical-soft: 64 20 18;
-    --critical-ink: 255 138 128;
-    --on-critical: 255 255 255;
-
-    --info: 100 210 255;
-    --info-soft: 10 46 60;
-    --info-ink: 150 224 255;
-
-    --shadow: 0 0 0;
-
-    --fill: 118 118 128;
-    --fill-alpha: 0.24;
-
-    /* Dark materials are lighter than the black behind them; the lit top edge
-       has to be faint or it reads as an outline. */
-    --material: 30 30 32;
-    --material-alpha: 0.58;
-    --material-line: 255 255 255;
-    --material-line-alpha: 0.1;
-    --material-edge: 0 0 0;
-    --material-edge-alpha: 0.5;
-
-    --glass: 38 38 42;
-    --glass-line: 255 255 255;
-    --glass-alpha: 0.55;
-    --glass-line-alpha: 0.14;
-
-    --mesh-a: 10 132 255;
-    --mesh-b: 48 176 199;
-    --mesh-c: 94 92 230;
-    --mesh-alpha: 0.26;
-
-    color-scheme: dark;
-  }
-
   html {
-    -webkit-tap-highlight-color: transparent;
+    font-family: theme('fontFamily.sans');
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
   }
 
   body {
-    @apply bg-canvas text-ink antialiased;
-    font-family: theme('fontFamily.sans');
-  }
-
-  /* Numbers in tables and stat tiles must not jitter as values change. */
-  .tabular,
-  table td,
-  table th {
-    font-variant-numeric: tabular-nums;
-  }
-
-  :focus-visible {
-    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-canvas;
+    @apply bg-paper text-base text-ink;
+    min-height: 100dvh;
   }
 
   ::selection {
-    background-color: rgb(var(--accent) / 0.28);
+    background: rgb(var(--mark) / 0.75);
+    color: rgb(var(--ink));
   }
 
-  /* SF Pro's optical sizing does this natively; Inter needs the hints. */
-  body {
-    font-feature-settings: 'cv11', 'ss01', 'ss03';
-    letter-spacing: -0.006em;
+  :focus-visible {
+    outline: 2px solid rgb(var(--pen));
+    outline-offset: 2px;
   }
 
   h1,
   h2,
-  h3,
-  h4 {
+  h3 {
     text-wrap: balance;
   }
 
-  p {
-    text-wrap: pretty;
+  button {
+    text-align: inherit;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
 @layer components {
-  /* ------------------------------------------------------------- typography
-   *
-   * The display sizes carry their own family, so they live here rather than in
-   * the Tailwind fontSize scale (which cannot set font-family). Classes in
-   * @layer components still accept Tailwind variants, so `sm:text-display-xl`
-   * keeps working.
+  /* The system's headline voice: Archivo narrowed and heavy, like a form heading. */
+  .display {
+    font-stretch: 84%;
+    font-weight: 700;
+    letter-spacing: -0.018em;
+  }
+
+  .nums {
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+
+  /*
+   * A highlighter stroke. The gradient leaves the ends soft and the uneven
+   * radius keeps it from looking like a rectangle; clone keeps the stroke
+   * intact where a highlighted sentence wraps.
    */
-  .text-display-2xl {
-    @apply font-display font-semibold;
-    font-size: clamp(2.75rem, 6vw, 4.5rem);
-    line-height: 1.02;
-    letter-spacing: -0.032em;
-  }
-  .text-display-xl {
-    @apply font-display font-semibold;
-    font-size: clamp(2.25rem, 4.5vw, 3.25rem);
-    line-height: 1.06;
-    letter-spacing: -0.028em;
-  }
-  .text-display-lg {
-    @apply font-display text-[2.5rem] font-semibold leading-[1.1] tracking-[-0.026em];
-  }
-  .text-display {
-    @apply font-display text-[2rem] font-semibold leading-[1.15] tracking-[-0.022em];
-  }
-  .text-title {
-    @apply text-[1.0625rem] font-semibold leading-6 tracking-[-0.014em];
-  }
-
-  .eyebrow {
-    @apply text-[0.6875rem] font-semibold uppercase leading-4 tracking-[0.06em] text-ink-subtle;
-  }
-
-  /* ---------------------------------------------------------------- buttons
-   *
-   * Capsules, as on Apple platforms. The primary action is a flat filled
-   * capsule (no glow); secondary and ghost are tinted fills, never outlines.
-   * Pressing scales down slightly, which reads as the pane giving way.
-   */
-  .btn {
-    @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-full
-           border border-transparent text-sm font-semibold leading-none
-           transition-[background-color,border-color,color,box-shadow,transform] duration-150
-           active:scale-[0.97]
-           disabled:pointer-events-none disabled:opacity-40 disabled:active:scale-100;
-    transition-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
-  }
-  .btn-sm {
-    height: var(--control-sm);
-    @apply px-3.5 text-[0.8125rem];
-  }
-  .btn-md {
-    height: var(--control-md);
-    @apply px-4;
-  }
-  .btn-lg {
-    height: var(--control-lg);
-    @apply px-6 text-[0.9375rem];
-  }
-
-  .btn-primary {
-    @apply btn bg-accent text-accent-on hover:bg-accent-hover;
-    box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.18), 0 1px 2px 0 rgb(var(--shadow) / 0.12);
-  }
-  .btn-secondary {
-    @apply btn text-ink;
-    background-color: rgb(var(--fill) / var(--fill-alpha));
-  }
-  .btn-secondary:hover {
-    background-color: rgb(var(--fill) / calc(var(--fill-alpha) * 1.6));
-  }
-  .btn-ghost {
-    @apply btn text-accent-ink;
-  }
-  .btn-ghost:hover {
-    background-color: rgb(var(--fill) / var(--fill-alpha));
-  }
-  .btn-danger {
-    @apply btn bg-critical text-critical-on hover:brightness-110;
-  }
-
-  /* ------------------------------------------------------------------ forms
-   *
-   * Filled fields with no resting border; focus draws the system-blue ring.
-   */
-  .input {
-    height: var(--control-md);
-    background-color: rgb(var(--fill) / calc(var(--fill-alpha) * 0.75));
-    @apply w-full rounded-xl border border-transparent px-4 text-sm text-ink
-           transition-[border-color,box-shadow,background-color] duration-150 placeholder:text-ink-subtle
-           focus:border-accent focus:bg-surface focus:outline-none focus:ring-4 focus:ring-accent/20
-           disabled:cursor-not-allowed disabled:opacity-60;
-  }
-  textarea.input {
-    @apply h-auto min-h-[6rem] py-3 leading-relaxed;
-  }
-  select.input {
-    @apply cursor-pointer pr-9;
-  }
-
-  .label {
-    @apply mb-2 block text-[0.8125rem] font-semibold leading-5 text-ink;
-  }
-
-  /* ------------------------------------------------------- L1 / card: material
-   *
-   * A pane of regular material: translucent fill under a blur, a lit hairline
-   * on the top edge and a darker one around it so it separates from both a
-   * bright and a dark wallpaper.
-   */
-  .card {
-    @apply rounded-2xl;
-    background-color: rgb(var(--material) / var(--material-alpha));
-    backdrop-filter: blur(28px) saturate(170%);
-    -webkit-backdrop-filter: blur(28px) saturate(170%);
-    border: 1px solid rgb(var(--material-line) / var(--material-line-alpha));
-    box-shadow:
-      inset 0 1px 0 0 rgb(255 255 255 / calc(var(--material-line-alpha) * 0.9)),
-      0 0 0 0.5px rgb(var(--material-edge) / var(--material-edge-alpha)),
-      0 1px 2px 0 rgb(var(--shadow) / 0.05),
-      0 8px 24px -10px rgb(var(--shadow) / 0.14);
-  }
-  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    .card {
-      background-color: rgb(var(--surface));
-    }
-  }
-  .card-pad {
-    @apply card p-6;
-  }
-  /* L2: the hover answer for anything interactive built on .card. */
-  .card-interactive {
-    @apply card transition-[transform,box-shadow,background-color] duration-200 hover:-translate-y-0.5;
-    transition-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
-  }
-  .card-interactive:hover {
-    background-color: rgb(var(--material) / calc(var(--material-alpha) + 0.12));
-  }
-
-  .link {
-    @apply font-semibold text-accent-ink decoration-accent/30 underline-offset-[3px]
-           transition-colors hover:text-accent-hover hover:decoration-accent-hover/60 hover:underline;
-  }
-
-  /* ------------------------------------------------------------------ table */
-  .table-shell {
-    @apply w-full overflow-x-auto;
-  }
-  .table-base {
-    @apply w-full min-w-[36rem] border-collapse text-sm;
-  }
-  .table-base thead th {
-    padding: 0.625rem var(--cell-x);
-    @apply sticky top-0 z-[1] whitespace-nowrap border-b border-line/70 bg-surface-sunken/80
-           text-left text-[0.75rem] font-semibold leading-4 text-ink-subtle backdrop-blur-xl;
-  }
-  .table-base tbody td {
-    padding: var(--cell-y) var(--cell-x);
-    @apply border-b border-line/60 align-middle text-ink-muted;
-  }
-  .table-base tbody tr:last-child td {
-    @apply border-b-0;
-  }
-  .table-base tbody tr {
-    @apply transition-colors hover:bg-ink/[0.04];
-  }
-}
-
-@layer utilities {
-  /* ------------------------------------------------------------ L3: glass
-   *
-   * The floating-chrome treatment. The inset top highlight is what sells it as
-   * a physical pane rather than a translucent rectangle — it reads as light
-   * catching the top edge.
-   */
-  .glass {
-    background-color: rgb(var(--glass) / var(--glass-alpha));
-    backdrop-filter: blur(40px) saturate(190%);
-    -webkit-backdrop-filter: blur(40px) saturate(190%);
-    border: 1px solid rgb(var(--glass-line) / var(--glass-line-alpha));
-    box-shadow:
-      inset 0 1px 0 0 rgb(255 255 255 / 0.6),
-      0 0 0 0.5px rgb(0 0 0 / 0.06),
-      0 2px 8px -2px rgb(var(--shadow) / 0.08),
-      0 18px 44px -12px rgb(var(--shadow) / 0.22);
-  }
-  .dark .glass {
-    box-shadow:
-      inset 0 1px 0 0 rgb(255 255 255 / 0.12),
-      0 0 0 0.5px rgb(0 0 0 / 0.6),
-      0 2px 8px -2px rgb(0 0 0 / 0.5),
-      0 18px 44px -12px rgb(0 0 0 / 0.66);
-  }
-  /* Safari < 18 on some platforms, and any browser with the feature disabled,
-     would otherwise render the island nearly transparent over live content. */
-  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    .glass {
-      background-color: rgb(var(--glass) / 0.97);
-    }
-  }
-
-  /* --------------------------------------------------------- L0: the mesh
-   *
-   * Three large, very low-alpha radial stops. It is a ground, not a poster:
-   * at full size no single bloom should be identifiable as a shape.
-   */
-  .mesh {
-    background-image:
-      radial-gradient(58% 44% at 12% 0%, rgb(var(--mesh-a) / var(--mesh-alpha)) 0%, transparent 62%),
-      radial-gradient(46% 38% at 92% 6%, rgb(var(--mesh-c) / calc(var(--mesh-alpha) * 0.8)) 0%, transparent 60%),
-      radial-gradient(52% 40% at 74% 96%, rgb(var(--mesh-b) / calc(var(--mesh-alpha) * 0.55)) 0%, transparent 64%);
-  }
-
-  /* Same idea scoped to one element, for hero and panel corners. */
-  .accent-wash {
-    background-image: radial-gradient(
-      120% 100% at 100% 0%,
-      rgb(var(--accent) / 0.1) 0%,
-      transparent 62%
-    );
-  }
-
-  /* Small-caps labels are set in the system face, as on Apple platforms; mono
-     is kept for code and figures. Two classes outrank the single font utility. */
-  .font-mono.uppercase {
-    font-family: theme('fontFamily.sans');
-    font-weight: 600;
-    letter-spacing: 0.05em;
-  }
-
-  .scrollbar-slim {
-    scrollbar-width: thin;
-    scrollbar-color: rgb(var(--line-strong)) transparent;
-  }
-  .scrollbar-slim::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
-  }
-  .scrollbar-slim::-webkit-scrollbar-thumb {
-    background-color: rgb(var(--line-strong));
-    border-radius: 9999px;
-    border: 3px solid transparent;
-    background-clip: content-box;
-  }
-  .scrollbar-slim::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .shimmer {
-    position: relative;
-    overflow: hidden;
-  }
-  .shimmer::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    transform: translateX(-100%);
+  .hl {
     background-image: linear-gradient(
-      90deg,
-      transparent,
-      rgb(var(--ink) / 0.07),
-      transparent
+      100deg,
+      rgb(var(--mark) / 0) 0.5%,
+      rgb(var(--mark) / 0.92) 1.8%,
+      rgb(var(--mark) / 0.82) 97.5%,
+      rgb(var(--mark) / 0) 99.4%
     );
-    animation: shimmer 1.6s infinite;
+    background-repeat: no-repeat;
+    background-size: 100% 76%;
+    background-position: 0 62%;
+    padding: 0 0.2em;
+    margin: 0 -0.2em;
+    border-radius: 0.2em 0.5em 0.3em 0.45em / 0.5em 0.2em 0.45em 0.3em;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
   }
 
-  /* The dock sits above the fold of the content; pages add this so the last
-     row of a table is never parked underneath it. */
-  .pb-dock {
-    padding-bottom: 7.5rem;
+  /* Citation marker: the number a sentence is pinned to in the margin. */
+  .cite {
+    @apply nums inline-flex items-center justify-center rounded-sm bg-mark font-sans text-ink;
+    min-width: 1.15rem;
+    height: 1.05rem;
+    padding: 0 0.22rem;
+    margin: 0 0.1em;
+    font-size: 0.6875rem;
+    font-weight: 650;
+    line-height: 1;
+    vertical-align: 0.14em;
+    cursor: pointer;
+    transition: box-shadow 0.12s;
   }
-}
 
-/* Declared here rather than in the Tailwind config because `.shimmer` is a
-   hand-written utility and Tailwind only emits keyframes for animations it is
-   asked to generate a class for. */
-@keyframes shimmer {
-  100% {
-    transform: translateX(100%);
+  .cite:hover,
+  .cite[data-active='true'] {
+    box-shadow: 0 0 0 2px rgb(var(--ink));
   }
-}
 
-/* Respect the OS reduced-motion preference for every animation we ship. */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
+  /*
+   * Material: anything that comes from the books and papers (lessons, questions,
+   * agent answers) is set in the reading serif. The interface around it is sans.
+   */
+  .material {
+    @apply font-serif text-md text-ink;
+    font-variation-settings: 'opsz' 16;
+    line-height: 1.72;
+    overflow-wrap: anywhere;
+  }
+
+  .material > * + * {
+    margin-top: 0.9em;
+  }
+
+  .material h1,
+  .material h2,
+  .material h3,
+  .material h4 {
+    @apply font-sans;
+    font-stretch: 90%;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+  }
+
+  .material > * + h1,
+  .material > * + h2,
+  .material > * + h3,
+  .material > * + h4 {
+    margin-top: 1.7em;
+  }
+
+  .material h1 {
+    font-size: 1.5rem;
+  }
+
+  .material h2 {
+    font-size: 1.25rem;
+  }
+
+  .material h3,
+  .material h4 {
+    font-size: 1.0625rem;
+  }
+
+  .material ul {
+    list-style: disc;
+    padding-left: 1.3em;
+  }
+
+  .material ol {
+    list-style: decimal;
+    padding-left: 1.5em;
+  }
+
+  .material li + li,
+  .material li > ul,
+  .material li > ol {
+    margin-top: 0.3em;
+  }
+
+  .material li::marker {
+    color: rgb(var(--ink-3));
+  }
+
+  .material strong {
+    font-weight: 650;
+  }
+
+  .material a {
+    @apply text-pen underline underline-offset-2;
+  }
+
+  .material code {
+    @apply rounded-sm bg-desk font-mono;
+    font-size: 0.84em;
+    padding: 0.1em 0.35em;
+  }
+
+  .material pre {
+    @apply overflow-x-auto rounded-md bg-ink font-mono;
+    color: #e6eaf7;
+    padding: 0.85rem 1rem;
+    font-size: 0.8125rem;
+    line-height: 1.65;
+  }
+
+  .material pre code {
+    background: none;
+    padding: 0;
+    font-size: inherit;
+    color: inherit;
+  }
+
+  .material table {
+    @apply w-full font-sans text-base;
+    border-collapse: collapse;
+    display: block;
+    overflow-x: auto;
+  }
+
+  .material th {
+    @apply text-left font-semibold;
+    border-bottom: 1.5px solid rgb(var(--ink));
+    padding: 0.4rem 0.9rem 0.4rem 0;
+    white-space: nowrap;
+  }
+
+  .material td {
+    border-bottom: 1px solid rgb(var(--rule));
+    padding: 0.45rem 0.9rem 0.45rem 0;
+    vertical-align: top;
+  }
+
+  .material blockquote {
+    border-left: 3px solid rgb(var(--mark));
+    padding-left: 0.9rem;
+    color: rgb(var(--ink-2));
+  }
+
+  .material hr {
+    border-color: rgb(var(--rule));
+  }
+
+  .material-sm {
+    font-size: 0.9375rem;
+    line-height: 1.65;
   }
 }

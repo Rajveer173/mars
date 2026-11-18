@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 export const createClassBatchSchema = z.object({
   name: z.string().min(1).max(200),

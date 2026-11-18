@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import { Role } from '@prisma/client';
 
 const ASSIGNABLE_ROLES = [Role.ADMIN, Role.TEACHER, Role.STUDENT, Role.PROCTOR] as const;

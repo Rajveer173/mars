@@ -41,6 +41,8 @@ services:
     build:
       context: .
       dockerfile: nginx/Dockerfile
+      args:
+        VITE_DEMO_LOGINS: ${VITE_DEMO_LOGINS:-true}
     container_name: examforge-web
     restart: unless-stopped
     depends_on:

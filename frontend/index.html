@@ -3,50 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f2f7" />
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000" />
+    <meta name="theme-color" content="#ffffff" />
     <meta
       name="description"
-      content="ExamForge — question banks, proctored timed exams, auto-grading, coursework and certification for institutions."
+      content="A multi-agent RAG system for colleges: answers cited from your own course material, exam questions checked by a second agent, and a debrief after every test."
     />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>ExamForge — Assessment Platform</title>
-
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!--
-      Apple devices use the system SF Pro faces; Inter is the stand-in on
-      Windows and Android, JetBrains Mono the fallback for code.
-    -->
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&family=JetBrains+Mono:wght@400;500;600&display=swap"
-    />
-
-    <script>
-      // Theme and density are applied before first paint. Deferring to React
-      // would flash the light palette and the comfortable metrics on every load
-      // for anyone who chose otherwise.
-      (function () {
-        var root = document.documentElement;
-        try {
-          var theme = localStorage.getItem('examforge-theme');
-          var dark =
-            theme === 'dark' ||
-            (theme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-          if (dark) root.classList.add('dark');
-
-          var density = localStorage.getItem('examforge-density');
-          root.setAttribute('data-density', density === 'compact' ? 'compact' : 'comfortable');
-        } catch (e) {
-          // Storage throws in private mode; the light + comfortable defaults stand.
-          root.setAttribute('data-density', 'comfortable');
-        }
-      })();
-    </script>
+    <title>MARS: Multi-Agentic RAG System</title>
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

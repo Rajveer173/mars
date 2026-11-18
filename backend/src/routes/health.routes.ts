@@ -4,7 +4,7 @@ import { prisma } from '../config/database.js';
 import { env } from '../config/env.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { cachePing } from '../services/cache.service.js';
-import { llmInfo } from '../services/llm.js';
+import { providerInfo } from '../ai/provider.js';
 import { logger } from '../utils/logger.js';
 
 export const healthRouter = Router();
@@ -106,12 +106,13 @@ healthRouter.get(
 );
 
 healthRouter.get('/ai', (_req, res) => {
-  const info = llmInfo();
+  const { chat, embeddings } = providerInfo();
   res.json({
     success: true,
     data: {
-      status: !info.enabled ? 'disabled' : info.reachable ? 'configured' : 'unreachable',
-      model: info.model,
+      status: chat.connected ? 'configured' : 'disabled',
+      model: chat.model,
+      embeddings: embeddings.connected ? embeddings.model : null,
     },
   });
 });

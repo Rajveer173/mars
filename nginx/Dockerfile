@@ -5,6 +5,9 @@ WORKDIR /app
 COPY frontend/package.json frontend/package-lock.json* ./
 COPY frontend/ ./
 RUN npm ci
+# Demo role buttons on the sign-in page: off by default, local docker-compose turns them on.
+ARG VITE_DEMO_LOGINS=false
+ENV VITE_DEMO_LOGINS=$VITE_DEMO_LOGINS
 RUN npm run build
 
 FROM nginx:1.27-alpine

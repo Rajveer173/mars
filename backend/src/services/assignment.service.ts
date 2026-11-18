@@ -93,6 +93,10 @@ export async function getAssignment(id: string, userId: string, role: string) {
 
   if (!assignment) throw new AppError(404, 'Assignment not found');
 
+  if (role !== 'STUDENT' && role !== 'ADMIN' && assignment.createdById !== userId) {
+    throw new AppError(403, 'Only the assignment creator can review submissions');
+  }
+
   if (role === 'STUDENT') {
     const submission = assignment.submissions.find((s) => s.studentId === userId);
     return {
@@ -152,9 +156,10 @@ export async function submitAssignment(
   });
 
   if (existing) {
+    if (existing.marks !== null) throw new AppError(409, 'A graded submission cannot be changed');
     return prisma.assignmentSubmission.update({
       where: { id: existing.id },
-      data: { answerText: data.answerText, fileUrl: data.fileUrl },
+      data: { answerText: data.answerText, fileUrl: data.fileUrl, submittedAt: new Date() },
       include: { student: { select: { id: true, fullName: true, email: true } } },
     });
   }
@@ -182,6 +187,10 @@ export async function gradeSubmission(
   if (!submission) throw new AppError(404, 'Submission not found');
 
   const assignment = submission.assignment;
+  const grader = await prisma.user.findUnique({ where: { id: graderId }, select: { role: true } });
+  if (!grader || (grader.role !== 'ADMIN' && assignment.createdById !== graderId)) {
+    throw new AppError(403, 'Only the assignment creator or an administrator can grade submissions');
+  }
   if (data.marks > Number(assignment.maxMarks)) {
     throw new AppError(400, `Marks cannot exceed ${assignment.maxMarks}`);
   }
